@@ -1,5 +1,4 @@
 #include "curve_fit.hpp"
-#include "logger.hpp"
 
 
 auto internal_solve_system(gsl_vector* initial_params, gsl_multifit_nlinear_fdf *fdf,

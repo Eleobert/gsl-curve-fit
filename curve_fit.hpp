@@ -15,8 +15,8 @@
 template<typename C1>
 struct fit_data
 {
-    const arma::vec& t;
-    const arma::vec& y;
+    const std::vector<double>& t;
+    const std::vector<double>& y;
     // the actual function to be fitted
     C1 f;
 };
@@ -38,7 +38,7 @@ int internal_f(const gsl_vector* x, void* params, gsl_vector *f)
     auto parameters = gen_tuple<n_params>(init_args);
 
     // Calculate the error for each...
-    for (int i = 0; i < d->t.n_elem; ++i)
+    for (size_t i = 0; i < d->t.size(); ++i)
     {
         double ti = d->t[i];
         double yi = d->y[i];
@@ -67,7 +67,7 @@ auto internal_solve_system(gsl_vector* initial_params, gsl_multifit_nlinear_fdf 
 template<typename C1>
 auto curve_fit_impl(func_f_type f, func_df_type df, func_fvv_type fvv, gsl_vector* initial_params, fit_data<C1>& fd) -> std::vector<double>
 {
-    assert(fd.t.n_elem == fd.y.n_elem);
+    assert(fd.t.size() == fd.y.size());
 
     auto fdf = gsl_multifit_nlinear_fdf();
     auto fdf_params = gsl_multifit_nlinear_default_parameters();
@@ -75,7 +75,7 @@ auto curve_fit_impl(func_f_type f, func_df_type df, func_fvv_type fvv, gsl_vecto
     fdf.f   = f;
     fdf.df  = df;
     fdf.fvv = fvv;
-    fdf.n   = fd.t.n_elem;
+    fdf.n   = fd.t.size();
     fdf.p   = initial_params->size;
     fdf.params = &fd;
 
@@ -97,7 +97,7 @@ auto curve_fit_impl(func_f_type f, func_df_type df, func_fvv_type fvv, gsl_vecto
  * @return std::vector<double> with the computed coefficients
  */
 template<typename Callable>
-auto curve_fit(Callable f, const std::vector<double>& initial_params, const arma::vec& x, const arma::vec& y) -> std::vector<double>
+auto curve_fit(Callable f, const std::vector<double>& initial_params, const std::vector<double>& x, const std::vector<double>& y) -> std::vector<double>
 {
     constexpr auto n = decltype(n_params(std::function(f)))::n_args - 1;
     assert(initial_params.size() == n);
