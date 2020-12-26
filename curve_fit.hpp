@@ -1,16 +1,51 @@
 #pragma once
 
-#include "utils.hpp"
-
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_multifit_nlinear.h>
 
-
-// All of this template metaprograming just because we cant pass lambdas as function 
-// pointer argument.
+#include <vector>
+#include <cassert>
+#include <functional>
 
 // For information about non-linear least-squares fit with gsl
 // see https://www.gnu.org/software/gsl/doc/html/nls.html
+
+
+template <class R, class... ARGS>
+struct function_ripper {
+    static constexpr size_t n_args = sizeof...(ARGS);
+};
+
+/**
+ * This function returns the number of parameters of a given function.This
+ * overload is to be used specialy with lambdas.
+ */
+template <class R, class... ARGS>
+auto constexpr n_params(std::function<R (ARGS...)> ) 
+{
+    return function_ripper<R, ARGS...>();
+}
+
+/**
+ * This function returns the number of parameters of a given function. 
+ */
+template <class R, class... ARGS>
+auto constexpr n_params(R (ARGS...) ) 
+{
+    return function_ripper<R, ARGS...>();
+}
+
+template <typename F, size_t... Is>
+auto gen_tuple_impl(F func, std::index_sequence<Is...> ) 
+{
+    return std::make_tuple(func(Is)...);
+}
+
+template <size_t N, typename F>
+auto gen_tuple(F func) 
+{
+    return gen_tuple_impl(func, std::make_index_sequence<N>{} );
+}
 
 template<typename C1>
 struct fit_data
@@ -21,10 +56,12 @@ struct fit_data
     C1 f;
 };
 
+
 template <typename R, typename ... Types> constexpr size_t getArgumentCount( R(*f)(Types ...))
 {
    return sizeof...(Types);
 }
+
 
 template<typename FitData, int n_params>
 int internal_f(const gsl_vector* x, void* params, gsl_vector *f)
@@ -99,6 +136,7 @@ auto curve_fit_impl(func_f_type f, func_df_type df, func_fvv_type fvv, gsl_vecto
 template<typename Callable>
 auto curve_fit(Callable f, const std::vector<double>& initial_params, const std::vector<double>& x, const std::vector<double>& y) -> std::vector<double>
 {
+    // We can't pass lambdas without convert to std::function.
     constexpr auto n = decltype(n_params(std::function(f)))::n_args - 1;
     assert(initial_params.size() == n);
 
